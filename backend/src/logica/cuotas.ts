@@ -12,13 +12,17 @@
 
 /** Los datos mínimos de una compra en cuotas que necesitan estas funciones. */
 export interface DatosCuotas {
+  // cuánto costó la compra completa
   montoTotal: number;
+  // en cuántas cuotas se dividió la compra
   totalCuotas: number;
+  // cuánto vale cada cuota normal
   cuotaMensual: number; // Valor de las cuotas 1 a N-1 (ver calcularCuotaBase)
 }
 
 /** Valor de las cuotas "normales": el monto dividido en cuotas, redondeado hacia abajo. */
 export function calcularCuotaBase(montoTotal: number, totalCuotas: number): number {
+  // divide el monto en las cuotas y quita los decimales
   return Math.floor(montoTotal / totalCuotas);
 }
 
@@ -27,9 +31,12 @@ export function calcularCuotaBase(montoTotal: number, totalCuotas: number): numb
  * Todas valen `cuotaMensual`, excepto la última, que completa el monto total.
  */
 export function montoDeCuota(tx: DatosCuotas, numeroCuota: number): number {
+  // si es la última cuota, cobra lo que falta para completar
   if (numeroCuota >= tx.totalCuotas) {
+    // total menos lo que ya se pagó en las cuotas anteriores
     return tx.montoTotal - tx.cuotaMensual * (tx.totalCuotas - 1);
   }
+  // cualquier otra cuota vale lo normal
   return tx.cuotaMensual;
 }
 
@@ -40,5 +47,6 @@ export function montoDeCuota(tx: DatosCuotas, numeroCuota: number): number {
  * Es lo que "ocupa" cupo en la tarjeta.
  */
 export function saldoPendienteTx(tx: DatosCuotas & { cuotaActual: number }): number {
+  // total menos las cuotas que ya se pagaron
   return tx.montoTotal - tx.cuotaMensual * (tx.cuotaActual - 1);
 }

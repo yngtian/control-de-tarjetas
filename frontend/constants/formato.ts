@@ -9,7 +9,9 @@ export const soloDigitos = (txt: string): string => txt.replace(/[^0-9]/g, '');
  * Úsalo en la prop `value` de un TextInput para que se vea con puntos al escribir.
  */
 export const formatearMiles = (txt: string): string => {
+  // deja solo los números y quita los ceros del principio
   const digitos = soloDigitos(txt).replace(/^0+/, ''); // quita ceros a la izquierda
+  // pone un punto cada tres números
   return digitos.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 };
 
@@ -24,4 +26,5 @@ export const formatearCLP = (n: number): string => `$${n.toLocaleString('es-CL')
  * De "Banco Estado · Camila" queda "Camila" (el banco ya se ve en la tarjeta): ["Banco Estado · Camila"] -> "Camila".
  */
 export const nombresCompartidos = (nombres: string[]): string =>
+  // quita el banco de cada nombre y los une con comas
   nombres.map((n) => (n.includes(' · ') ? n.split(' · ').slice(1).join(' · ') : n)).join(', ');
