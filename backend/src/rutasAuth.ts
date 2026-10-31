@@ -6,7 +6,7 @@
    GET  /api/auth/yo         (con token)                 → { resultado, usuario }
 
    El resto de la API exige el encabezado  Authorization: Bearer <token>
-   (ver requiereSesion). Sin él, o con un token vencido, responde 401.
+   (ver requiereSesion). Sin él, con un token vencido o si la cuenta ya no existe, responde 401.
    ============================================================ */
 
 import { Router, type RequestHandler, type Response } from 'express';
@@ -45,12 +45,16 @@ function validarContrasena(valor: unknown): Validacion {
   return null;
 }
 
-/** Exige un token válido y deja el id del usuario en res.locals.uid. */
-export function requiereSesion(secreto: string): RequestHandler {
-  return (req, res, next) => {
+/**
+ * Exige un token válido de una cuenta que todavía existe, y deja el id del usuario en res.locals.uid.
+ * Revisar que exista importa: un token sigue siendo auténtico aunque la cuenta se haya borrado, y sin
+ * esta revisión la app seguiría entrando con esa cuenta (sin datos) y podría volver a crearle datos.
+ */
+export function requiereSesion(secreto: string, bd: BaseDeDatos): RequestHandler {
+  return async (req, res, next) => {
     const encabezado = req.headers.authorization ?? '';
     const uid = encabezado.startsWith('Bearer ') ? leerToken(encabezado.slice(7), secreto) : null;
-    if (!uid) {
+    if (!uid || !(await bd.leer(`usuarios/${uid}/correo`))) {
       res.status(401).json({ resultado: 'no_autorizado' });
       return;
     }
@@ -118,7 +122,7 @@ export function crearRutasAuth(bd: BaseDeDatos, secreto: string) {
     iniciarSesion(res, perfil);
   });
 
-  rutas.get('/yo', requiereSesion(secreto), async (_req, res) => {
+  rutas.get('/yo', requiereSesion(secreto, bd), async (_req, res) => {
     const perfil = await leerPerfil(bd, res.locals.uid);
     if (!perfil) {
       res.status(401).json({ resultado: 'no_autorizado' });

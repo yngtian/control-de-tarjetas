@@ -26,7 +26,7 @@ app.get('/health', (_req, res) => {
 });
 // Crear cuenta e ingresar no piden sesión; todo lo demás sí
 app.use('/api/auth', crearRutasAuth(bd, secreto));
-app.use('/api', requiereSesion(secreto), crearRutas(bd));
+app.use('/api', requiereSesion(secreto, bd), crearRutas(bd));
 
 // Cualquier error no controlado (ej: Firebase sin conexión) responde 500 en vez de botar el servidor
 app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
