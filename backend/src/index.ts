@@ -3,7 +3,7 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import { obtenerSecreto } from './auth';
 import { crearBaseDeDatos } from './db';
 import { crearRutas } from './rutas';
-import { asegurarCuentaDemo, crearRutasAuth, requiereSesion } from './rutasAuth';
+import { crearRutasAuth, requiereSesion } from './rutasAuth';
 
 // Carga las variables de backend/.env si existe (ver .env.example)
 try {
@@ -15,7 +15,6 @@ try {
 const PUERTO = Number(process.env.PORT ?? 3000);
 const bd = await crearBaseDeDatos();
 const secreto = obtenerSecreto();
-const hayCuentaDemo = await asegurarCuentaDemo(bd);
 
 const app = express();
 // La app (web o celular) corre en otro origen, por eso se habilita CORS
@@ -44,5 +43,4 @@ app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
 app.listen(PUERTO, () => {
   console.log(`API escuchando en http://localhost:${PUERTO}`);
   console.log(`Base de datos: ${bd.descripcion}`);
-  if (hayCuentaDemo) console.log('Cuenta demo activa: correo "demo", contraseña "123" (se apaga con CUENTA_DEMO=no)');
 });

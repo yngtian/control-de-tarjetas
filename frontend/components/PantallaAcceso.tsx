@@ -21,9 +21,6 @@ import { CampoFormulario, estiloInput } from './CampoFormulario';
 // Misma regla que valida el backend: algo@algo.algo, sin espacios
 const CORREO_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Cuenta demo que crea el backend al arrancar (se apaga allá con CUENTA_DEMO=no)
-const CUENTA_DEMO = { email: 'demo', password: '123' };
-
 interface CampoClaveProps {
   valor: string;
   onCambiar: (texto: string) => void;
@@ -87,10 +84,8 @@ export default function PantallaAcceso() {
 
     // === VALIDACIONES (las mismas que repite el backend) ===
     if (esRegistro && !nombre.trim()) return avisar('Nombre requerido', 'Ingresa tu nombre.');
-    // Al ingresar solo se pide que no esté vacío: el formato se exige al crear la cuenta
-    // (y así funciona la cuenta demo, cuyo "correo" es solo "demo")
     if (!correo) return avisar('Correo requerido', 'Ingresa tu correo.');
-    if (esRegistro && !CORREO_VALIDO.test(correo)) {
+    if (!CORREO_VALIDO.test(correo)) {
       return avisar('Correo inválido', 'Revisa que el correo esté bien escrito (ej: nombre@correo.cl).');
     }
     if (esRegistro) {
@@ -110,18 +105,6 @@ export default function PantallaAcceso() {
       ? await registrarse(nombre.trim(), correo, password)
       : await ingresar(correo, password);
     setEnviando(false);
-    mostrarResultado(resultado, mensaje);
-  };
-
-  /** Ingresa directo con la cuenta demo, sin escribir nada. */
-  const handleDemo = async () => {
-    if (enviando) return;
-    setEnviando(true);
-    const { resultado, mensaje } = await ingresar(CUENTA_DEMO.email, CUENTA_DEMO.password);
-    setEnviando(false);
-    if (resultado === 'credenciales_invalidas') {
-      return avisar('Cuenta demo no disponible', 'La cuenta demo está desactivada en el servidor.');
-    }
     mostrarResultado(resultado, mensaje);
   };
 
@@ -252,17 +235,6 @@ export default function PantallaAcceso() {
             ) : (
               <Text className="text-white text-base font-inter-bold">{esRegistro ? 'Crear cuenta' : 'Ingresar'}</Text>
             )}
-          </TouchableOpacity>
-
-          {/* Cuenta demo: para mostrar la app sin registrarse */}
-          <TouchableOpacity
-            onPress={handleDemo}
-            disabled={enviando}
-            activeOpacity={0.8}
-            className="w-full h-12 mt-3 rounded-2xl items-center justify-center flex-row gap-2 bg-white border border-slate-300"
-          >
-            <Ionicons name="play-circle-outline" size={20} color="#0F172A" />
-            <Text className="text-slate-900 text-base font-inter-bold">Entrar con la cuenta demo</Text>
           </TouchableOpacity>
 
           {/* Atajo para cambiar de modo */}

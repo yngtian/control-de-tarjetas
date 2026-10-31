@@ -42,38 +42,6 @@ function validarContrasena(valor: unknown): Validacion {
   return null;
 }
 
-/**
- * Cuenta demo para mostrar la app sin registrarse: correo "demo", contraseña "123".
- * No cumple las reglas de registro (correo válido, 8 caracteres), por eso se crea aquí
- * y no por /registro. Cualquiera puede usarla: apagarla con CUENTA_DEMO=no antes de publicar.
- */
-const DEMO = { email: 'demo', password: '123', nombre: 'Demo' };
-
-/**
- * Crea una cuenta si aún no existe (sin pasar por las reglas de /registro) y devuelve su uid.
- * La usan la cuenta demo y los datos de ejemplo (semilla.ts).
- */
-export async function asegurarCuenta(
-  bd: BaseDeDatos,
-  datos: { email: string; password: string; nombre: string }
-): Promise<string> {
-  const clave = claveDeCorreo(datos.email);
-  const existente = (await bd.leer(`cuentas/${clave}`)) as Cuenta | null;
-  if (existente) return existente.uid;
-
-  const perfil: Perfil = { uid: generarId(), nombre: datos.nombre, email: datos.email };
-  const cuenta: Cuenta = { uid: perfil.uid, hash: await cifrarContrasena(datos.password) };
-  await bd.actualizar({ [`cuentas/${clave}`]: cuenta, [`usuarios/${perfil.uid}/perfil`]: perfil });
-  return perfil.uid;
-}
-
-/** Crea la cuenta demo si está activada y aún no existe. Devuelve true si queda disponible. */
-export async function asegurarCuentaDemo(bd: BaseDeDatos): Promise<boolean> {
-  if (process.env.CUENTA_DEMO === 'no') return false;
-  await asegurarCuenta(bd, DEMO);
-  return true;
-}
-
 /** Exige un token válido y deja el id del usuario en res.locals.uid. */
 export function requiereSesion(secreto: string): RequestHandler {
   return (req, res, next) => {

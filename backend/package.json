@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
-    "semilla": "tsx src/semilla.ts",
     "migrar": "tsx src/migrar.ts",
     "typecheck": "tsc --noEmit"
   },

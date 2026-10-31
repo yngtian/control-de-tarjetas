@@ -49,9 +49,9 @@ Después escaneas el QR con Expo Go, o apretas `a` para Android, `i` para iOS o 
 
 La app busca el backend en el mismo computador que sirve la app, en el puerto 3000. Eso funciona en el navegador y en Expo Go si el celular está en la misma red wifi. Si el backend está en otra dirección, copia `frontend/.env.example` como `frontend/.env` y define `EXPO_PUBLIC_API_URL`.
 
-**Cuenta demo:** para probar sin registrarse, ingresa con correo `demo` y contraseña `123`. El servidor la crea solo al arrancar. Cualquiera puede usarla y ver sus datos, así que antes de publicar hay que apagarla con `CUENTA_DEMO=no` en `backend/.env`.
+**Cuentas:** la primera vez, crea tu cuenta desde la app con "Crear cuenta" (correo válido y contraseña de al menos 8 caracteres). No hay cuentas creadas de antemano.
 
-**Datos de ejemplo:** para ver la app con datos, corre `npm run semilla` dentro de `backend`. Deja dos cuentas, `demo` y `camila` (contraseña `123` las dos), y reemplaza solo sus datos. Demo tiene 4 tarjetas, cada una en una situación distinta: compartida con Camila, pagada este mes, con una compra que se cobra el mes siguiente y con 2 meses sin pagar. Camila tiene su propia Visa y ve la tarjeta que Demo comparte con ella. Para probar la tarjeta compartida en un mismo computador, abre la app en `http://localhost:8081` con una cuenta y en `http://127.0.0.1:8081` con la otra: el navegador guarda una sesión distinta para cada dirección. Las fechas se calculan desde el mes actual, así que se ve igual cualquier día que se corra, y se puede volver a correr para dejar todo como al principio.
+**Probar una tarjeta compartida en un mismo computador:** abre la app en `http://localhost:8081` con una cuenta y en `http://127.0.0.1:8081` con otra: el navegador guarda una sesión distinta para cada dirección.
 
 Si la app no logra conectarse, muestra una pantalla "Sin conexión" con la dirección que intentó y un botón para reintentar.
 
@@ -164,7 +164,6 @@ frontend/                    app Expo
 backend/                     API Node.js + Express
   src/
     index.ts                 arranca el servidor
-    semilla.ts               datos de ejemplo para las cuentas demo y camila (npm run semilla)
     migrar.ts                pasa los datos del archivo local a Firebase (npm run migrar)
     auth.ts                  contraseñas (scrypt) y tokens de sesión firmados
     rutasAuth.ts             crear cuenta, ingresar y exigir sesión
@@ -188,6 +187,5 @@ backend/                     API Node.js + Express
 - **Compartir es inmediato:** al escribir el correo, la otra persona ya ve la tarjeta; no hay invitación que aceptar ni aviso. Los cambios del otro llegan en hasta 10 segundos (la app consulta al servidor; no hay notificaciones en tiempo real).
 - **El pago es siempre del total acumulado:** no hay pagos parciales ni registro del monto pagado.
 - **Cuentas sin recuperación de contraseña ni límite de intentos.** No hay "olvidé mi contraseña" ni bloqueo tras varios intentos fallidos. Antes de publicar la API conviene agregar ambos y servirla con HTTPS.
-- **Cuenta demo activa por defecto** (`demo` / `123`): apagarla con `CUENTA_DEMO=no` antes de publicar. Si se corrió `npm run semilla`, también existe la cuenta `camila` / `123`, que hay que borrar.
 - **Secreto de sesión:** en producción hay que definir `SESSION_SECRET` en `backend/.env`. Sin ella, en desarrollo se genera uno en `backend/.secreto-sesion`.
 - Los límites (`limites.ts`) y los tipos de la API están copiados en el backend y en la app. Los tipos están en `backend/src/modelos.ts` y `frontend/api/tipos.ts`. Si cambia uno, hay que actualizar el otro.
