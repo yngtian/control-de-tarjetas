@@ -152,7 +152,8 @@ export type Resultado =
   | 'ya_pagada'
   | 'no_existe'
   | 'email_en_uso'           // Registro: ya hay una cuenta con ese correo
-  | 'credenciales_invalidas' // Ingreso: correo o contraseña incorrectos
+  | 'sin_cuenta'             // Ingreso: no hay una cuenta con ese correo
+  | 'credenciales_invalidas' // Ingreso: la contraseña no es correcta
   | 'no_autorizado'          // Sin sesión o sesión vencida
   | 'sin_permiso'            // La tarjeta es de otra persona: la acción es solo del dueño (o del autor)
   | 'cuotas_pagadas'         // Cambiar monto o cuotas de una compra que ya pagó alguna cuota

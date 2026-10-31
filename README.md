@@ -142,7 +142,7 @@ Solo se guarda lo que escribe el usuario. Todo lo demás (monto del mes, cupo di
 | Método | Ruta | Qué hace |
 | --- | --- | --- |
 | POST | `/api/auth/registro` | Crear cuenta (body: `{ nombre, email, password }`); responde `{ token, usuario }` (409 si el correo ya existe) |
-| POST | `/api/auth/login` | Ingresar (body: `{ email, password }`); responde `{ token, usuario }` (401 si el correo o la contraseña no son correctos) |
+| POST | `/api/auth/login` | Ingresar (body: `{ email, password }`); responde `{ token, usuario }` (404 `sin_cuenta` si no hay cuenta con ese correo, 401 si la contraseña no es correcta) |
 | GET | `/api/auth/yo` | El usuario de la sesión actual |
 | GET | `/api/estado` | Todo lo que la app necesita: tarjetas, compras y suscripciones ya calculadas, y los totales |
 | GET | `/api/proyecciones?meses=6` | Pagos proyectados mes a mes (1 a 24 meses) |

@@ -108,19 +108,19 @@ export function crearRutasAuth(bd: BaseDeDatos, secreto: string) {
       return rechazar(res, 'Ingresa tu correo y tu contraseña.');
     }
 
+    // Se avisa por separado si no hay cuenta con ese correo o si la contraseña está mal, para que
+    // la app pueda ofrecer crear la cuenta. (Revela qué correos tienen cuenta, igual que /registro
+    // al responder 'email_en_uso'.)
     const uid = (await bd.leer(`correos/${claveDeCorreo(email)}`)) as string | null;
+    const perfil = uid ? await leerPerfil(bd, uid) : null;
+    if (!uid || !perfil) {
+      res.status(404).json({ resultado: 'sin_cuenta' });
+      return;
+    }
     // Las cuentas creadas antes de guardar la contraseña visible tienen el hash en "contrasena"
-    const hash = uid
-      ? (((await bd.leer(`usuarios/${uid}/contrasenaCifrada`)) ?? (await bd.leer(`usuarios/${uid}/contrasena`))) as string | null)
-      : null;
-    // Correo inexistente o contraseña incorrecta dan la MISMA respuesta: así no se puede
-    // averiguar qué correos tienen cuenta. Sin cuenta igual se calcula un hash para que
-    // el tiempo de respuesta tampoco lo delate.
-    const valida = hash
-      ? await verificarContrasena(password, hash)
-      : (await cifrarContrasena(password), false);
-    const perfil = valida ? await leerPerfil(bd, uid!) : null;
-    if (!perfil) {
+    const hash = ((await bd.leer(`usuarios/${uid}/contrasenaCifrada`)) ??
+      (await bd.leer(`usuarios/${uid}/contrasena`))) as string | null;
+    if (!hash || !(await verificarContrasena(password, hash))) {
       res.status(401).json({ resultado: 'credenciales_invalidas' });
       return;
     }

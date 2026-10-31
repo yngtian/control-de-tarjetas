@@ -13,7 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { Resultado } from '../api/tipos';
-import { avisar, avisarSinConexion } from '../constants/alertas';
+import { avisar, avisarSinConexion, confirmar } from '../constants/alertas';
 import { LIMITES } from '../constants/limites';
 import { useSesion } from '../context/SesionContext';
 import { CampoFormulario, estiloInput } from './CampoFormulario';
@@ -112,8 +112,18 @@ export default function PantallaAcceso() {
   const mostrarResultado = (resultado: Resultado, mensaje?: string) => {
     if (resultado === 'ok') return;
     if (resultado === 'sin_conexion') return avisarSinConexion();
+    if (resultado === 'sin_cuenta') {
+      // Ofrece crearla: cambia a "Crear cuenta" y deja escrito el mismo correo
+      return confirmar({
+        titulo: 'No existe esa cuenta',
+        mensaje: 'No hay ninguna cuenta con ese correo. Revisa que esté bien escrito o crea una cuenta nueva.',
+        textoConfirmar: 'Crear cuenta',
+        textoCancelar: 'Revisar correo',
+        onConfirmar: () => cambiarModo('registro'),
+      });
+    }
     if (resultado === 'credenciales_invalidas') {
-      return avisar('No pudimos ingresar', 'El correo o la contraseña no son correctos.');
+      return avisar('Contraseña incorrecta', 'La contraseña no es correcta. Inténtalo de nuevo.');
     }
     if (resultado === 'email_en_uso') {
       return avisar('Correo ya registrado', 'Ya existe una cuenta con ese correo. Ingresa con tu contraseña.');
