@@ -175,7 +175,7 @@ export default function PantallaAcceso() {
                 maxLength={LIMITES.nombreMax}
                 autoComplete="name"
                 textContentType="name"
-                placeholder="Ej: Tomás"
+                placeholder="Ej: Jaimito"
                 placeholderTextColor="#94A3B8"
                 className={estiloInput()}
               />
