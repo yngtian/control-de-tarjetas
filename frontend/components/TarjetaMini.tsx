@@ -44,34 +44,37 @@ export default function TarjetaMini({ item }: { item: TarjetaItem }) {
         </Text>
       </View>
 
-      {/* columna de la derecha con disponible y utilizado */}
-      <View className="flex-1 flex-row justify-between pl-4">
-        <View>
-          <Text className="text-slate-400 text-[11px] font-inter-medium tracking-wide">
-            DISPONIBLE
-          </Text>
-          {/* cupo que queda, en formato de pesos */}
-          <Text className="text-slate-900 text-base font-inter-bold mt-1">
-            {formatearCLP(item.cupoDisponible)}
-          </Text>
-          {/* si comparte cupo, ese disponible es el de todo el grupo */}
-          {item.compartidaCon.length > 0 && (
-            <Text className="text-slate-400 text-[10px] font-inter-medium" numberOfLines={1}>
-              Cuenta compartida con {nombresCompartidos(item.compartidaCon)}
+      {/* lado derecho: disponible y utilizado, y debajo con quién se comparte */}
+      <View className="flex-1 pl-4">
+        <View className="flex-row justify-between">
+          <View>
+            <Text className="text-slate-400 text-[11px] font-inter-medium tracking-wide">
+              DISPONIBLE
             </Text>
-          )}
+            {/* cupo que queda, en formato de pesos */}
+            <Text className="text-slate-900 text-base font-inter-bold mt-1">
+              {formatearCLP(item.cupoDisponible)}
+            </Text>
+          </View>
+
+          {/* items-end alinea esta columna a la derecha */}
+          <View className="items-end">
+            <Text className="text-slate-400 text-[11px] font-inter-medium tracking-wide">
+              UTILIZADO
+            </Text>
+            {/* porcentaje con un decimal, ej: 24.0% */}
+            <Text className="text-slate-900 text-base font-inter-bold mt-1">
+              {porcentaje.toFixed(1)}%
+            </Text>
+          </View>
         </View>
 
-        {/* items-end alinea esta columna a la derecha */}
-        <View className="items-end">
-          <Text className="text-slate-400 text-[11px] font-inter-medium tracking-wide">
-            UTILIZADO
+        {/* va fuera de las columnas: si el nombre es largo se corta, pero no empuja "utilizado" */}
+        {item.compartidaCon.length > 0 && (
+          <Text className="text-slate-400 text-[10px] font-inter-medium" numberOfLines={1}>
+            Cuenta compartida con {nombresCompartidos(item.compartidaCon)}
           </Text>
-          {/* porcentaje con un decimal, ej: 24.0% */}
-          <Text className="text-slate-900 text-base font-inter-bold mt-1">
-            {porcentaje.toFixed(1)}%
-          </Text>
-        </View>
+        )}
       </View>
     </View>
   );
