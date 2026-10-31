@@ -89,7 +89,8 @@ Así queda el árbol en Firebase. Está pensado para leerse a simple vista en la
     "jaimito-k3f9": {
       "nombre": "Jaimito",
       "correo": "jaimito@correo.cl",
-      "contrasena": "<cifrada>",
+      "contrasena": "jaimito123",
+      "contrasenaCifrada": "<sal:hash>",
       "tarjetas": {
         "banco-santander-a1b2": {
           "banco": "Banco Santander",
@@ -130,7 +131,7 @@ Así queda el árbol en Firebase. Está pensado para leerse a simple vista en la
 ```
 
 - **`correos`** sirve solo para ingresar: dice a qué usuario pertenece cada correo. Firebase no acepta puntos en las claves, por eso el correo va con `,` en vez de `.`.
-- **`contrasena`** nunca es la contraseña real: es un hash (scrypt con sal) que no se puede revertir.
+- **`contrasena`** es la contraseña tal cual, para poder verla en la consola. Para ingresar se usa **`contrasenaCifrada`**, un hash (scrypt con sal) que no se puede revertir. Las cuentas creadas antes de este cambio muestran su contraseña después de su próximo ingreso.
 - **`pagadoHasta`** es el último mes pagado; **`primerMes`** y **`desde`**, el primer mes que se cobra una compra o una suscripción. Una tarjeta Visa o MasterCard usa su alias como título (`banco`); en los demás bancos, `alias` aparece solo si es distinto del nombre del banco.
 - **Tarjetas compartidas:** una tarjeta se guarda una sola vez, en el usuario dueño, con sus compras y suscripciones adentro aunque las registre otra persona (`registradaPor` dice quién). En `compartidaCon` están las personas que la ven, y cada una anota en `tarjetasDeOtros` de quién es. Así todos leen y escriben la misma copia.
 
@@ -221,6 +222,7 @@ backend/                     API Node.js + Express
 
 ## Cosas pendientes y detalles conocidos
 
+- **Las contraseñas se ven en Firebase** (campo `contrasena`), a pedido. Cualquiera con acceso a la consola o al JSON de credenciales las ve, y la gente suele repetir contraseñas en otros servicios. Antes de que la usen otras personas conviene dejar de guardarlas: quitar esa línea en `rutasAuth.ts` y borrar los campos `contrasena`; el ingreso sigue funcionando con `contrasenaCifrada`.
 - **No se cambia el banco de una tarjeta ni la tarjeta de una compra.**
 - **Compartir es inmediato:** al escribir el correo, la otra persona ya ve la tarjeta; no hay invitación que aceptar ni aviso. Los cambios del otro llegan en hasta 10 segundos (la app consulta al servidor; no hay notificaciones en tiempo real).
 - **El pago es siempre del total acumulado:** no hay pagos parciales ni registro del monto pagado.

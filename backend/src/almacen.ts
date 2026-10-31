@@ -14,7 +14,8 @@
        "jaimito-k3f9": {
          "nombre": "Jaimito",
          "correo": "jaimito@correo.cl",
-         "contrasena": "<cifrada, nunca la contraseña real>",
+         "contrasena": "jaimito123",                 ← tal cual, para poder verla (no se usa para ingresar)
+         "contrasenaCifrada": "<sal:hash>",          ← la que se revisa al ingresar (ver auth.ts)
          "tarjetas": {
            "banco-santander-a1b2": {
              "banco": "Banco Santander",            ← título de la tarjeta
@@ -100,7 +101,8 @@ export interface TarjetaGuardada {
 export interface UsuarioGuardado {
   nombre: string;
   correo: string;
-  contrasena: string;
+  contrasena: string;        // tal cual la escribió el usuario
+  contrasenaCifrada: string; // hash con que se revisa al ingresar
   tarjetas?: Record<string, TarjetaGuardada>;
   tarjetasDeOtros?: Record<string, string>; // { idTarjeta: idDueño }
 }

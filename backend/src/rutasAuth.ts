@@ -94,8 +94,10 @@ export function crearRutasAuth(bd: BaseDeDatos, secreto: string) {
       [`correos/${clave}`]: perfil.uid,
       [`usuarios/${perfil.uid}/nombre`]: perfil.nombre,
       [`usuarios/${perfil.uid}/correo`]: perfil.email,
-      // Nunca la contraseña real: solo su hash (ver auth.ts)
-      [`usuarios/${perfil.uid}/contrasena`]: await cifrarContrasena(password),
+      // Para ingresar se usa la versión cifrada (ver auth.ts). La contraseña tal cual se guarda
+      // solo para que se pueda ver en Firebase: si se deja de querer, basta con borrar "contrasena"
+      [`usuarios/${perfil.uid}/contrasena`]: password,
+      [`usuarios/${perfil.uid}/contrasenaCifrada`]: await cifrarContrasena(password),
     });
     iniciarSesion(res, perfil, 201);
   });
@@ -107,7 +109,10 @@ export function crearRutasAuth(bd: BaseDeDatos, secreto: string) {
     }
 
     const uid = (await bd.leer(`correos/${claveDeCorreo(email)}`)) as string | null;
-    const hash = uid ? ((await bd.leer(`usuarios/${uid}/contrasena`)) as string | null) : null;
+    // Las cuentas creadas antes de guardar la contraseña visible tienen el hash en "contrasena"
+    const hash = uid
+      ? (((await bd.leer(`usuarios/${uid}/contrasenaCifrada`)) ?? (await bd.leer(`usuarios/${uid}/contrasena`))) as string | null)
+      : null;
     // Correo inexistente o contraseña incorrecta dan la MISMA respuesta: así no se puede
     // averiguar qué correos tienen cuenta. Sin cuenta igual se calcula un hash para que
     // el tiempo de respuesta tampoco lo delate.
@@ -118,6 +123,13 @@ export function crearRutasAuth(bd: BaseDeDatos, secreto: string) {
     if (!perfil) {
       res.status(401).json({ resultado: 'credenciales_invalidas' });
       return;
+    }
+    // Deja las cuentas antiguas con la contraseña visible y la cifrada en su campo
+    if ((await bd.leer(`usuarios/${uid}/contrasena`)) !== password) {
+      await bd.actualizar({
+        [`usuarios/${uid}/contrasena`]: password,
+        [`usuarios/${uid}/contrasenaCifrada`]: hash,
+      });
     }
     iniciarSesion(res, perfil);
   });
