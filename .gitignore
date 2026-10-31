@@ -1,0 +1,6 @@
+# Lo de cada carpeta (dependencias, .env, credenciales de Firebase) está en backend/.gitignore y frontend/.gitignore
+
+# sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
