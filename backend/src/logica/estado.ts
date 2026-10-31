@@ -143,10 +143,13 @@ export function calcularEstado(
     const montoMes = pendientes.reduce((acc, p) => acc + p.monto, 0);
     const montoAtrasado = pendientes.reduce((acc, p) => acc + p.atrasado, 0);
     // Saldo pendiente: lo que todavía falta pagar de las compras (incluye las cuotas
-    // atrasadas y las que vienen). Es lo que "ocupa" el cupo, junto a las suscripciones por pagar.
+    // atrasadas y las que vienen). Es lo que "ocupa" el cupo, junto a las suscripciones.
+    // Cada suscripción ocupa lo que debe o, si no debe nada todavía (su primer cobro es el mes
+    // siguiente, o ya se pagó este mes), su próximo cobro: igual que una compra, ocupa el cupo
+    // desde que se registra.
     const cupoOcupado =
       susCompras.reduce((acc, tx) => acc + saldoPendienteTx(tx), 0) +
-      susSubs.reduce((acc, s) => acc + subs.get(s.id)!.monto, 0);
+      susSubs.reduce((acc, s) => acc + s.monto * Math.max(subs.get(s.id)!.meses, 1), 0);
     // Primer mes con algo pendiente (para contar los meses atrasados)
     const primerPendiente = pendientes.reduce<string | null>((min, p) => (!min || p.desde < min ? p.desde : min), null);
     const mesesAtrasados = montoAtrasado > 0 && primerPendiente ? mesesEntre(primerPendiente, mesActual) : 0;
