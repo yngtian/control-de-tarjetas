@@ -1,0 +1,10 @@
+node_modules/
+.env
+# credenciales de Firebase: nunca subirlas al repositorio
+firebase-credenciales.json
+*-firebase-adminsdk-*.json
+# base de datos local de desarrollo
+datos-local.json
+
+# secreto con que se firman las sesiones (se genera solo en desarrollo)
+.secreto-sesion
