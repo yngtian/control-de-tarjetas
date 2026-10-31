@@ -1,12 +1,12 @@
 /* ============================================================
    Pasa los datos del archivo local a Firebase:  npm run migrar
 
-   Copia todo lo que hay en datos-local.json (cuentas, usuarios, tarjetas, compras,
-   suscripciones y tarjetas compartidas) a la Firebase Realtime Database configurada
-   en .env. Sirve una sola vez, al pasar de desarrollo local a Firebase.
+   Copia todo lo que hay en datos-local.json (correos y usuarios, con sus tarjetas,
+   compras, suscripciones y tarjetas compartidas) a la Firebase Realtime Database
+   configurada en .env. Sirve una sola vez, al pasar de desarrollo local a Firebase.
 
-   Solo escribe las ramas "cuentas" y "usuarios": si en Firebase ya había otras cosas,
-   no se tocan. Si una cuenta ya existe en Firebase, se reemplaza por la del archivo.
+   Solo escribe las ramas "correos" y "usuarios": si en Firebase ya había otras cosas,
+   no se tocan. Si un usuario ya existe en Firebase, se reemplaza por el del archivo.
    ============================================================ */
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -31,17 +31,17 @@ if (!existsSync(archivo)) {
 }
 
 const datos = JSON.parse(readFileSync(archivo, 'utf8')) as {
-  cuentas?: Record<string, unknown>;
+  correos?: Record<string, unknown>;
   usuarios?: Record<string, unknown>;
 };
 const bd = await crearBaseDeDatos();
 
-// Una escritura por cuenta y por usuario: reemplaza solo esos nodos, no toda la base
+// Una escritura por correo y por usuario: reemplaza solo esos nodos, no toda la base
 const cambios: Record<string, unknown> = {};
-for (const [clave, cuenta] of Object.entries(datos.cuentas ?? {})) cambios[`cuentas/${clave}`] = cuenta;
+for (const [clave, uid] of Object.entries(datos.correos ?? {})) cambios[`correos/${clave}`] = uid;
 for (const [uid, usuario] of Object.entries(datos.usuarios ?? {})) cambios[`usuarios/${uid}`] = usuario;
 await bd.actualizar(cambios);
 
 console.log(`Datos pasados a ${bd.descripcion}:`);
-console.log(`  ${Object.keys(datos.cuentas ?? {}).length} cuentas y ${Object.keys(datos.usuarios ?? {}).length} usuarios.`);
+console.log(`  ${Object.keys(datos.correos ?? {}).length} correos y ${Object.keys(datos.usuarios ?? {}).length} usuarios.`);
 process.exit(0);

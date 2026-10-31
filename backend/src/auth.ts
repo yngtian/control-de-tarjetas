@@ -8,7 +8,7 @@
      Formato: "<datos en base64url>.<firma en base64url>".
    ============================================================ */
 
-import { createHash, createHmac, randomBytes, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomBytes, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -72,8 +72,13 @@ export function obtenerSecreto(): string {
 }
 
 /**
- * Clave de una cuenta en la base de datos a partir de su correo.
- * Firebase no acepta "." en las claves, y así el correo tampoco queda a la vista en la ruta.
+ * Clave de una cuenta en "correos": el mismo correo en minúsculas, con "." cambiado por ","
+ * porque Firebase no acepta puntos en las claves. Ej: "jaimito@correo.cl" -> "jaimito@correo,cl".
+ * Los otros caracteres que Firebase no acepta (y "," y "%", para no confundirlos) van como %XX.
  */
 export const claveDeCorreo = (correo: string) =>
-  createHash('sha256').update(correo.trim().toLowerCase()).digest('hex');
+  correo
+    .trim()
+    .toLowerCase()
+    .replace(/[%,$#[\]/]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
+    .replace(/\./g, ',');

@@ -4,16 +4,30 @@
    Cada acción lee los datos del usuario, valida contra el estado calculado
    y escribe los cambios en un solo update (atómico).
 
+   Cómo quedan los datos en Firebase: ver almacen.ts.
+
    Tarjetas compartidas: lo que el usuario ve son sus tarjetas más las que otros
    compartieron con él. Una tarjeta, sus compras y sus suscripciones se guardan
-   siempre en la cuenta del dueño, así que cada escritura va a la rama del dueño
-   de la tarjeta, aunque la haga otra persona.
+   siempre dentro de la tarjeta, en el usuario dueño, así que cada escritura va
+   ahí aunque la haga otra persona.
    Permisos:
    - Cualquiera que vea la tarjeta: registrar compras y suscripciones, y pagar el mes.
    - Quien registró una compra o suscripción (o el dueño): editarla o eliminarla.
    - Solo el dueño: editar o eliminar la tarjeta y elegir con quién se comparte.
    ============================================================ */
 
+import {
+  agregarTarjetaGuardada,
+  compraAGuardar,
+  rutaCompra,
+  rutaSuscripcion,
+  rutaTarjeta,
+  rutaUsuario,
+  suscripcionAGuardar,
+  tarjetaAGuardar,
+  type TarjetaGuardada,
+  type UsuarioGuardado,
+} from './almacen';
 import { claveDeCorreo } from './auth';
 import type { BaseDeDatos, Cambios } from './db';
 import { EMISORES_CON_ALIAS } from './limites';
@@ -48,60 +62,42 @@ export interface NuevaTransaccion {
   cuotas: number;
 }
 
-/** Rama de un usuario en la base de datos. */
-const rama = (uid: string) => `usuarios/${uid}`;
-
 export function crearServicio(bd: BaseDeDatos, uid: string) {
   /**
-   * Junta lo que ve el usuario: sus datos más las tarjetas compartidas con él
-   * (con sus compras y suscripciones, que viven en la cuenta del dueño).
+   * Junta lo que ve el usuario: sus tarjetas más las que otros compartieron con él
+   * (con sus compras y suscripciones, que viven dentro de la tarjeta, en el dueño).
    */
   const leerEstado = async () => {
-    const propios = ((await bd.leer(rama(uid))) ?? {}) as DatosBD;
-    const datos: DatosBD = {
-      tarjetas: { ...propios.tarjetas },
-      transacciones: { ...propios.transacciones },
-      suscripciones: { ...propios.suscripciones },
-    };
+    const usuario = ((await bd.leer(rutaUsuario(uid))) ?? {}) as Partial<UsuarioGuardado>;
+    const datos: Required<DatosBD> = { tarjetas: {}, transacciones: {}, suscripciones: {} };
+    for (const [id, tarjeta] of Object.entries(usuario.tarjetas ?? {})) agregarTarjetaGuardada(datos, id, tarjeta);
+
     const duenoDe = new Map<string, string>();
-
-    // Datos de cada dueño que compartió algo (se leen una vez por dueño)
-    const ramasDeDuenos = new Map<string, DatosBD>();
-    for (const [tarjetaId, { dueno }] of Object.entries(propios.compartidasConmigo ?? {})) {
-      if (!ramasDeDuenos.has(dueno)) ramasDeDuenos.set(dueno, ((await bd.leer(rama(dueno))) ?? {}) as DatosBD);
-      const datosDueno = ramasDeDuenos.get(dueno)!;
-      const tarjeta = datosDueno.tarjetas?.[tarjetaId];
+    for (const [tarjetaId, dueno] of Object.entries(usuario.tarjetasDeOtros ?? {})) {
+      const tarjeta = (await bd.leer(rutaTarjeta(dueno, tarjetaId))) as TarjetaGuardada | null;
       // Si el dueño la eliminó o dejó de compartirla, la referencia ya no vale
-      if (!tarjeta || !tarjeta.miembros?.[uid]) continue;
-
-      datos.tarjetas![tarjetaId] = tarjeta;
+      if (!tarjeta?.compartidaCon?.[uid]) continue;
+      agregarTarjetaGuardada(datos, tarjetaId, tarjeta);
       duenoDe.set(tarjetaId, dueno);
-      for (const tx of Object.values(datosDueno.transacciones ?? {})) {
-        if (tx.tarjetaId === tarjetaId) datos.transacciones![tx.id] = tx;
-      }
-      for (const s of Object.values(datosDueno.suscripciones ?? {})) {
-        if (s.tarjetaId === tarjetaId) datos.suscripciones![s.id] = s;
-      }
     }
 
     // Nombres de todas las personas que aparecen (dueños, miembros y autores)
     const personas = new Set<string>([uid, ...duenoDe.values()]);
-    for (const t of Object.values(datos.tarjetas!)) Object.keys(t.miembros ?? {}).forEach((m) => personas.add(m));
-    for (const x of [...Object.values(datos.transacciones!), ...Object.values(datos.suscripciones!)]) {
+    for (const t of Object.values(datos.tarjetas)) Object.keys(t.miembros ?? {}).forEach((m) => personas.add(m));
+    for (const x of [...Object.values(datos.transacciones), ...Object.values(datos.suscripciones)]) {
       if (x.autorUid) personas.add(x.autorUid);
     }
     const nombres = new Map<string, string>();
     for (const persona of personas) {
-      const perfil = (await bd.leer(`${rama(persona)}/perfil`)) as { nombre?: string } | null;
-      if (perfil?.nombre) nombres.set(persona, perfil.nombre);
+      const nombre = (await bd.leer(`${rutaUsuario(persona)}/nombre`)) as string | null;
+      if (nombre) nombres.set(persona, nombre);
     }
 
     const contexto: ContextoUsuario = { uid, duenoDe, nombres };
-    // Ruta donde se guarda algo de una tarjeta: siempre en la rama de su dueño
-    const rutaDe = (tarjetaId: string, coleccion: 'tarjetas' | 'transacciones' | 'suscripciones', id: string) =>
-      `${rama(duenoDe.get(tarjetaId) ?? uid)}/${coleccion}/${id}`;
+    // Dueño de una tarjeta: ahí se guarda todo lo que es de ella
+    const duenoDeTarjeta = (tarjetaId: string) => duenoDe.get(tarjetaId) ?? uid;
 
-    return { datos, estado: calcularEstado(datos, new Date(), contexto), rutaDe };
+    return { datos, estado: calcularEstado(datos, new Date(), contexto), duenoDeTarjeta };
   };
 
   return {
@@ -116,14 +112,13 @@ export function crearServicio(bd: BaseDeDatos, uid: string) {
     },
 
     async agregarTarjeta(nueva: NuevaTarjeta): Promise<Resultado> {
-      const tarjeta: TarjetaBase = { id: generarId(), ...nueva };
-      await bd.actualizar({ [`${rama(uid)}/tarjetas/${tarjeta.id}`]: tarjeta });
+      await bd.actualizar({ [rutaTarjeta(uid, generarId(nueva.banco))]: tarjetaAGuardar(nueva) });
       return 'ok';
     },
 
     /** Registra una compra. Se rechaza si la tarjeta no existe o el monto supera el cupo disponible. */
     async registrarTransaccion({ tarjetaId, motivo, monto, cuotas }: NuevaTransaccion): Promise<Resultado> {
-      const { estado, rutaDe } = await leerEstado();
+      const { estado, duenoDeTarjeta } = await leerEstado();
       const tarjeta = estado.tarjetas.find((t) => t.id === tarjetaId);
       if (!tarjeta) return 'sin_tarjeta';
       if (monto > tarjeta.cupoDisponible) return 'sin_cupo';
@@ -135,7 +130,7 @@ export function crearServicio(bd: BaseDeDatos, uid: string) {
         : estado.mesActual;
 
       const transaccion: TransaccionBase = {
-        id: generarId(),
+        id: generarId(motivo),
         tarjetaId,
         motivo,
         montoTotal: monto,
@@ -146,7 +141,7 @@ export function crearServicio(bd: BaseDeDatos, uid: string) {
         mesInicio,
         autorUid: uid,
       };
-      await bd.actualizar({ [rutaDe(tarjetaId, 'transacciones', transaccion.id)]: transaccion });
+      await bd.actualizar({ [rutaCompra(duenoDeTarjeta(tarjetaId), tarjetaId, transaccion.id)]: compraAGuardar(transaccion) });
       return 'ok';
     },
 
@@ -155,28 +150,29 @@ export function crearServicio(bd: BaseDeDatos, uid: string) {
      * (o con el mes ya pagado), el primer cobro es el mes siguiente.
      */
     async agregarSuscripcion(nueva: NuevaSuscripcion): Promise<Resultado> {
-      const { estado, rutaDe } = await leerEstado();
+      const { estado, duenoDeTarjeta } = await leerEstado();
       const tarjeta = estado.tarjetas.find((t) => t.id === nueva.tarjetaId);
       if (!tarjeta) return 'sin_tarjeta';
       if (nueva.monto > tarjeta.cupoDisponible) return 'sin_cupo';
 
       const suscripcion: SuscripcionBase = {
-        id: generarId(),
+        id: generarId(nueva.nombre),
         ...nueva,
         mesInicio: pasoElCorte(tarjeta.diaVencimiento) || tarjeta.pagadaEsteMes ? claveMesSiguiente() : estado.mesActual,
         autorUid: uid,
       };
-      await bd.actualizar({ [rutaDe(nueva.tarjetaId, 'suscripciones', suscripcion.id)]: suscripcion });
+      const dueno = duenoDeTarjeta(nueva.tarjetaId);
+      await bd.actualizar({ [rutaSuscripcion(dueno, nueva.tarjetaId, suscripcion.id)]: suscripcionAGuardar(suscripcion) });
       return 'ok';
     },
 
     /** Elimina una suscripción (deja de contar en el total y libera su cupo). */
     async eliminarSuscripcion(id: string): Promise<Resultado> {
-      const { estado, rutaDe } = await leerEstado();
+      const { estado, duenoDeTarjeta } = await leerEstado();
       const sub = estado.suscripciones.find((s) => s.id === id);
       if (!sub) return 'no_existe';
       if (!sub.editable) return 'sin_permiso';
-      await bd.actualizar({ [rutaDe(sub.tarjetaId, 'suscripciones', id)]: null });
+      await bd.actualizar({ [rutaSuscripcion(duenoDeTarjeta(sub.tarjetaId), sub.tarjetaId, id)]: null });
       return 'ok';
     },
 
@@ -188,22 +184,23 @@ export function crearServicio(bd: BaseDeDatos, uid: string) {
      * - La tarjeta queda marcada como pagada este mes: no se puede pagar dos veces.
      */
     async pagarMesTarjeta(tarjetaId: string): Promise<Resultado> {
-      const { estado, rutaDe } = await leerEstado();
+      const { estado, duenoDeTarjeta } = await leerEstado();
       const tarjeta = estado.tarjetas.find((t) => t.id === tarjetaId);
       if (!tarjeta) return 'no_existe';
       if (tarjeta.pagadaEsteMes) return 'ya_pagada';
 
       const mes = estado.mesActual;
-      const cambios: Cambios = { [`${rutaDe(tarjetaId, 'tarjetas', tarjetaId)}/ultimoMesPagado`]: mes };
+      const dueno = duenoDeTarjeta(tarjetaId);
+      const cambios: Cambios = { [`${rutaTarjeta(dueno, tarjetaId)}/pagadoHasta`]: mes };
 
       for (const s of estado.suscripciones) {
-        if (s.tarjetaId === tarjetaId) cambios[`${rutaDe(tarjetaId, 'suscripciones', s.id)}/ultimoMesPagado`] = mes;
+        if (s.tarjetaId === tarjetaId) cambios[`${rutaSuscripcion(dueno, tarjetaId, s.id)}/pagadoHasta`] = mes;
       }
       for (const tx of estado.transacciones) {
         // Solo avanzan las compras de la tarjeta que ya tienen cuotas por pagar
         if (tx.tarjetaId !== tarjetaId || tx.cuotasPorPagar === 0) continue;
         const siguiente = tx.cuotaActual + tx.cuotasPorPagar;
-        const ruta = rutaDe(tarjetaId, 'transacciones', tx.id);
+        const ruta = rutaCompra(dueno, tarjetaId, tx.id);
         if (siguiente > tx.totalCuotas) {
           cambios[ruta] = null; // Pagó su última cuota: se borra y libera cupo
         } else {
@@ -225,24 +222,25 @@ export function crearServicio(bd: BaseDeDatos, uid: string) {
       if (!base || !tarjeta) return 'no_existe';
       if (!tarjeta.propia) return 'sin_permiso';
 
-      const ruta = `${rama(uid)}/tarjetas/${id}`;
+      const ruta = rutaTarjeta(uid, id);
       const escritura: Cambios = {};
       if (cambios.alias !== undefined) {
-        // Visa y MasterCard se muestran con su alias: cambia también el título
+        // Visa y MasterCard se muestran con su alias: el alias pasa a ser el título.
+        // En los demás bancos el alias solo se guarda si es distinto del título.
         const generica = EMISORES_CON_ALIAS.includes(base.emisor);
         if (generica && !cambios.alias) return 'datos_invalidos';
-        const alias = cambios.alias || base.banco;
-        escritura[`${ruta}/alias`] = alias;
         if (generica) {
-          escritura[`${ruta}/nombre`] = alias;
-          escritura[`${ruta}/banco`] = alias;
+          escritura[`${ruta}/banco`] = cambios.alias;
+          escritura[`${ruta}/alias`] = null;
+        } else {
+          escritura[`${ruta}/alias`] = cambios.alias && cambios.alias !== base.banco ? cambios.alias : null;
         }
       }
       if (cambios.cupoTotal !== undefined) {
         // Lo usado no cambia al cambiar el cupo
         const usado = tarjeta.cupoTotal - tarjeta.cupoDisponible;
         if (cambios.cupoTotal < usado) return 'sin_cupo';
-        escritura[`${ruta}/cupoTotal`] = cambios.cupoTotal;
+        escritura[`${ruta}/cupo`] = cambios.cupoTotal;
       }
       if (cambios.diaVencimiento !== undefined) {
         escritura[`${ruta}/diaVencimiento`] = cambios.diaVencimiento;
@@ -256,20 +254,15 @@ export function crearServicio(bd: BaseDeDatos, uid: string) {
      * mostrarse a las personas con quienes estaba compartida.
      */
     async eliminarTarjeta(id: string): Promise<Resultado> {
-      const { datos, estado } = await leerEstado();
+      const { estado } = await leerEstado();
       const tarjeta = estado.tarjetas.find((t) => t.id === id);
       if (!tarjeta) return 'no_existe';
       if (!tarjeta.propia) return 'sin_permiso';
 
-      const escritura: Cambios = { [`${rama(uid)}/tarjetas/${id}`]: null };
-      for (const tx of Object.values(datos.transacciones ?? {})) {
-        if (tx.tarjetaId === id) escritura[`${rama(uid)}/transacciones/${tx.id}`] = null;
-      }
-      for (const sub of Object.values(datos.suscripciones ?? {})) {
-        if (sub.tarjetaId === id) escritura[`${rama(uid)}/suscripciones/${sub.id}`] = null;
-      }
+      // Sus compras y suscripciones están dentro de la tarjeta: se van con ella
+      const escritura: Cambios = { [rutaTarjeta(uid, id)]: null };
       for (const miembro of tarjeta.miembros) {
-        escritura[`${rama(miembro.uid)}/compartidasConmigo/${id}`] = null;
+        escritura[`${rutaUsuario(miembro.uid)}/tarjetasDeOtros/${id}`] = null;
       }
       await bd.actualizar(escritura);
       return 'ok';
@@ -281,14 +274,14 @@ export function crearServicio(bd: BaseDeDatos, uid: string) {
      * El monto nuevo tiene que caber en el cupo.
      */
     async editarTransaccion(id: string, cambios: CambiosTransaccion): Promise<Resultado> {
-      const { estado, rutaDe } = await leerEstado();
+      const { estado, duenoDeTarjeta } = await leerEstado();
       const tx = estado.transacciones.find((t) => t.id === id);
       if (!tx) return 'no_existe';
       if (!tx.editable) return 'sin_permiso';
 
-      const ruta = rutaDe(tx.tarjetaId, 'transacciones', id);
+      const ruta = rutaCompra(duenoDeTarjeta(tx.tarjetaId), tx.tarjetaId, id);
       const escritura: Cambios = {};
-      if (cambios.motivo !== undefined) escritura[`${ruta}/motivo`] = cambios.motivo;
+      if (cambios.motivo !== undefined) escritura[`${ruta}/descripcion`] = cambios.motivo;
 
       const monto = cambios.monto ?? tx.montoTotal;
       const cuotas = cambios.cuotas ?? tx.totalCuotas;
@@ -297,9 +290,8 @@ export function crearServicio(bd: BaseDeDatos, uid: string) {
         // El cupo libre más lo que ya ocupaba esta compra es lo que tiene para crecer
         const tarjeta = estado.tarjetas.find((t) => t.id === tx.tarjetaId);
         if (!tarjeta || monto > tarjeta.cupoDisponible + tx.montoTotal) return 'sin_cupo';
-        escritura[`${ruta}/montoTotal`] = monto;
-        escritura[`${ruta}/totalCuotas`] = cuotas;
-        escritura[`${ruta}/cuotaMensual`] = calcularCuotaBase(monto, cuotas);
+        escritura[`${ruta}/monto`] = monto;
+        escritura[`${ruta}/cuotas`] = cuotas;
       }
       if (Object.keys(escritura).length > 0) await bd.actualizar(escritura);
       return 'ok';
@@ -307,11 +299,11 @@ export function crearServicio(bd: BaseDeDatos, uid: string) {
 
     /** Elimina una compra (quien la registró o el dueño): deja de cobrarse y libera el cupo. */
     async eliminarTransaccion(id: string): Promise<Resultado> {
-      const { estado, rutaDe } = await leerEstado();
+      const { estado, duenoDeTarjeta } = await leerEstado();
       const tx = estado.transacciones.find((t) => t.id === id);
       if (!tx) return 'no_existe';
       if (!tx.editable) return 'sin_permiso';
-      await bd.actualizar({ [rutaDe(tx.tarjetaId, 'transacciones', id)]: null });
+      await bd.actualizar({ [rutaCompra(duenoDeTarjeta(tx.tarjetaId), tx.tarjetaId, id)]: null });
       return 'ok';
     },
 
@@ -326,13 +318,15 @@ export function crearServicio(bd: BaseDeDatos, uid: string) {
       if (!tarjeta) return 'sin_tarjeta';
       if (!tarjeta.propia) return 'sin_permiso';
 
-      const cuenta = (await bd.leer(`cuentas/${claveDeCorreo(correo)}`)) as { uid: string } | null;
-      if (!cuenta) return 'no_existe';
-      if (cuenta.uid === uid) return 'datos_invalidos';
+      const otro = (await bd.leer(`correos/${claveDeCorreo(correo)}`)) as string | null;
+      if (!otro) return 'no_existe';
+      if (otro === uid) return 'datos_invalidos';
 
+      // En la tarjeta se anota también el nombre, para que se lea fácil en Firebase
+      const nombre = ((await bd.leer(`${rutaUsuario(otro)}/nombre`)) as string | null) ?? otro;
       await bd.actualizar({
-        [`${rama(uid)}/tarjetas/${id}/miembros/${cuenta.uid}`]: true,
-        [`${rama(cuenta.uid)}/compartidasConmigo/${id}`]: { dueno: uid },
+        [`${rutaTarjeta(uid, id)}/compartidaCon/${otro}`]: nombre,
+        [`${rutaUsuario(otro)}/tarjetasDeOtros/${id}`]: uid,
       });
       return 'ok';
     },
@@ -349,10 +343,10 @@ export function crearServicio(bd: BaseDeDatos, uid: string) {
       const esElDueno = tarjeta.propia;
       if (!esElDueno && miembroUid !== uid) return 'sin_permiso';
 
-      const dueno = esElDueno ? uid : (await bd.leer(`${rama(uid)}/compartidasConmigo/${id}/dueno`)) as string;
+      const dueno = esElDueno ? uid : ((await bd.leer(`${rutaUsuario(uid)}/tarjetasDeOtros/${id}`)) as string);
       await bd.actualizar({
-        [`${rama(dueno)}/tarjetas/${id}/miembros/${miembroUid}`]: null,
-        [`${rama(miembroUid)}/compartidasConmigo/${id}`]: null,
+        [`${rutaTarjeta(dueno, id)}/compartidaCon/${miembroUid}`]: null,
+        [`${rutaUsuario(miembroUid)}/tarjetasDeOtros/${id}`]: null,
       });
       return 'ok';
     },

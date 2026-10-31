@@ -4,15 +4,11 @@
    Todo el acceso pasa por dos operaciones:
    - leer(ruta): trae lo que hay en esa ruta del árbol (null si no hay nada).
    - actualizar(cambios): escribe varias rutas a la vez, igual que update() de Firebase.
-     Ej: { "usuarios/u1/tarjetas/123/ultimoMesPagado": "2026-10", "usuarios/u1/transacciones/456": null }
+     Ej: { "usuarios/jaimito-k3f9/tarjetas/banco-santander-a1b2/pagadoHasta": "2026-10",
+           "usuarios/jaimito-k3f9/tarjetas/banco-santander-a1b2/compras/bicicleta-x9w2": null }
      Un valor null borra esa ruta. Es atómico: o se aplican todos o ninguno.
 
-   Cómo queda el árbol:
-   {
-     "cuentas":  { "<sha256 del correo>": { "uid", "hash" } },        ← para ingresar
-     "usuarios": { "<uid>": { "perfil", "tarjetas", "transacciones", "suscripciones",
-                              "compartidasConmigo" } }                 ← tarjetas de otros que ve
-   }
+   Cómo queda el árbol: ver almacen.ts.
 
    Si no hay credenciales de Firebase configuradas se usa un archivo JSON local
    con la misma estructura, para poder desarrollar sin conexión.

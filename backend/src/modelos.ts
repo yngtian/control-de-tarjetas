@@ -2,20 +2,21 @@
    Modelos de datos
 
    Hay dos tipos de datos:
-   - "Base": lo que se guarda en Firebase (lo que escribe el usuario).
+   - "Base": lo que escribe el usuario, como lo usa la lógica. En Firebase se guarda
+     con otra forma, más fácil de leer (ver almacen.ts, que traduce entre las dos).
    - "Item": lo que se entrega a la app (lo guardado + lo calculado).
    Los calculados nunca se guardan, así nunca quedan desactualizados.
 
    Tarjetas compartidas: una tarjeta (con sus compras y suscripciones) vive siempre
-   en la cuenta de su dueño. Al compartirla, el dueño anota al otro usuario en
-   `miembros` y el otro guarda una referencia en `compartidasConmigo`. Así hay una
-   sola copia de los datos y lo que registra cualquiera lo ven todos.
+   en el usuario dueño. Al compartirla, el dueño anota al otro usuario en la tarjeta
+   y el otro guarda en "tarjetasDeOtros" de quién es. Así hay una sola copia de los
+   datos y lo que registra cualquiera lo ven todos.
 
    Ojo: la app (frontend/api/tipos.ts) tiene una copia de los tipos que
    recibe. Si cambias lo que devuelve la API, actualiza los dos lados.
    ============================================================ */
 
-/* ---------- Lo que se guarda ---------- */
+/* ---------- Lo que escribe el usuario ---------- */
 
 export interface TarjetaBase {
   id: string;
@@ -55,16 +56,13 @@ export interface SuscripcionBase {
 }
 
 /**
- * Los datos de un usuario en Firebase (rama `usuarios/<uid>`). Las compras y suscripciones
- * de sus tarjetas están aquí aunque las haya registrado otra persona con quien las comparte.
- * Firebase no guarda colecciones vacías, por eso todas son opcionales.
+ * Todo lo que ve un usuario, en listas por id: sus tarjetas y las que le compartieron,
+ * con todas sus compras y suscripciones (las arma almacen.ts a partir de Firebase).
  */
 export interface DatosBD {
   tarjetas?: Record<string, TarjetaBase>;
   transacciones?: Record<string, TransaccionBase>;
   suscripciones?: Record<string, SuscripcionBase>;
-  // Tarjetas de otros usuarios que compartieron con este: { tarjetaId: { dueno: uid } }
-  compartidasConmigo?: Record<string, { dueno: string }>;
 }
 
 /* ---------- Lo que se entrega a la app ---------- */

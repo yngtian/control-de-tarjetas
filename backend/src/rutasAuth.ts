@@ -23,10 +23,13 @@ interface Perfil {
   email: string;
 }
 
-/** Lo que se guarda para poder ingresar: nunca la contraseña, solo su hash. */
-interface Cuenta {
-  uid: string;
-  hash: string;
+/**
+ * Nombre y correo de un usuario (en Firebase: usuarios/<uid>/nombre y /correo).
+ * null si el usuario ya no existe.
+ */
+async function leerPerfil(bd: BaseDeDatos, uid: string): Promise<Perfil | null> {
+  const [nombre, email] = await Promise.all([bd.leer(`usuarios/${uid}/nombre`), bd.leer(`usuarios/${uid}/correo`)]);
+  return typeof nombre === 'string' && typeof email === 'string' ? { uid, nombre, email } : null;
 }
 
 function validarCorreo(valor: unknown): Validacion {
@@ -76,14 +79,20 @@ export function crearRutasAuth(bd: BaseDeDatos, secreto: string) {
     if (error) return rechazar(res, error);
 
     const clave = claveDeCorreo(email);
-    if (await bd.leer(`cuentas/${clave}`)) {
+    if (await bd.leer(`correos/${clave}`)) {
       res.status(409).json({ resultado: 'email_en_uso' });
       return;
     }
 
-    const perfil: Perfil = { uid: generarId(), nombre: nombre.trim(), email: email.trim().toLowerCase() };
-    const cuenta: Cuenta = { uid: perfil.uid, hash: await cifrarContrasena(password) };
-    await bd.actualizar({ [`cuentas/${clave}`]: cuenta, [`usuarios/${perfil.uid}/perfil`]: perfil });
+    // El id se arma con el nombre (ej: "jaimito-k3f9") para que se entienda en Firebase
+    const perfil: Perfil = { uid: generarId(nombre.trim()), nombre: nombre.trim(), email: email.trim().toLowerCase() };
+    await bd.actualizar({
+      [`correos/${clave}`]: perfil.uid,
+      [`usuarios/${perfil.uid}/nombre`]: perfil.nombre,
+      [`usuarios/${perfil.uid}/correo`]: perfil.email,
+      // Nunca la contraseña real: solo su hash (ver auth.ts)
+      [`usuarios/${perfil.uid}/contrasena`]: await cifrarContrasena(password),
+    });
     iniciarSesion(res, perfil, 201);
   });
 
@@ -93,14 +102,15 @@ export function crearRutasAuth(bd: BaseDeDatos, secreto: string) {
       return rechazar(res, 'Ingresa tu correo y tu contraseña.');
     }
 
-    const cuenta = (await bd.leer(`cuentas/${claveDeCorreo(email)}`)) as Cuenta | null;
+    const uid = (await bd.leer(`correos/${claveDeCorreo(email)}`)) as string | null;
+    const hash = uid ? ((await bd.leer(`usuarios/${uid}/contrasena`)) as string | null) : null;
     // Correo inexistente o contraseña incorrecta dan la MISMA respuesta: así no se puede
     // averiguar qué correos tienen cuenta. Sin cuenta igual se calcula un hash para que
     // el tiempo de respuesta tampoco lo delate.
-    const valida = cuenta
-      ? await verificarContrasena(password, cuenta.hash)
+    const valida = hash
+      ? await verificarContrasena(password, hash)
       : (await cifrarContrasena(password), false);
-    const perfil = valida ? ((await bd.leer(`usuarios/${cuenta!.uid}/perfil`)) as Perfil | null) : null;
+    const perfil = valida ? await leerPerfil(bd, uid!) : null;
     if (!perfil) {
       res.status(401).json({ resultado: 'credenciales_invalidas' });
       return;
@@ -109,7 +119,7 @@ export function crearRutasAuth(bd: BaseDeDatos, secreto: string) {
   });
 
   rutas.get('/yo', requiereSesion(secreto), async (_req, res) => {
-    const perfil = (await bd.leer(`usuarios/${res.locals.uid}/perfil`)) as Perfil | null;
+    const perfil = await leerPerfil(bd, res.locals.uid);
     if (!perfil) {
       res.status(401).json({ resultado: 'no_autorizado' });
       return;

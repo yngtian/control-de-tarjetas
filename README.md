@@ -74,28 +74,65 @@ npm start         # corre sin recargar al guardar cambios
 3. En *Configuración del proyecto → Cuentas de servicio*, aprieta **Generar nueva clave privada**. Se descarga un JSON: guárdalo como `backend/firebase-credenciales.json`.
 4. Copia `backend/.env.example` como `backend/.env` y completa `FIREBASE_DATABASE_URL`.
 5. Reinicia el backend. En la consola debe decir `Base de datos: Firebase Realtime Database (...)`.
-6. Si ya tenías datos en el archivo local (`datos-local.json`), pásalos con `npm run migrar` dentro de `backend`. Copia todas las cuentas con sus tarjetas, compras y suscripciones; si una cuenta ya existe en Firebase, la reemplaza.
+6. Si ya tenías datos en el archivo local (`datos-local.json`), pásalos con `npm run migrar` dentro de `backend`. Copia todos los usuarios con sus tarjetas, compras y suscripciones; si un usuario ya existe en Firebase, lo reemplaza.
 
 El JSON de credenciales da acceso total a la base: no lo subas al repositorio (ya está en `backend/.gitignore`). El backend entra con esa cuenta de servicio, así que las reglas de seguridad de la base no lo afectan, y la app nunca habla directo con Firebase.
 
-Así queda el árbol en Firebase. Cada usuario tiene su propia rama, y `cuentas` sirve solo para ingresar: guarda un hash de la contraseña, nunca la contraseña.
+Así queda el árbol en Firebase. Está pensado para leerse a simple vista en la consola: cada usuario tiene sus tarjetas, y cada tarjeta tiene adentro sus compras y suscripciones. Los identificadores se arman con el nombre de cada cosa (`jaimito-k3f9`, `banco-santander-a1b2`), más 4 letras al azar para que no se repitan.
 
 ```json
 {
-  "cuentas":  { "<sha256 del correo>": { "uid": "<uid>", "hash": "<sal:hash scrypt>" } },
-  "usuarios": { "<uid>": {
-  "perfil":        { "nombre": "...", "email": "..." },
-  "tarjetas":      { "<id>": { "banco": "...", "cupoTotal": 2000000, "diaVencimiento": 31, "ultimoMesPagado": "2026-10",
-                                "miembros": { "<uid de otra cuenta>": true }, ... } },
-  "transacciones": { "<id>": { "tarjetaId": "<id>", "motivo": "Notebook", "montoTotal": 600000, "cuotaActual": 2, "totalCuotas": 6,
-                                "autorUid": "<quien la registró>", ... } },
-  "suscripciones": { "<id>": { "tarjetaId": "<id>", "nombre": "Netflix", "monto": 12000, "autorUid": "...", ... } },
-  "compartidasConmigo": { "<id de una tarjeta ajena>": { "dueno": "<uid del dueño>" } }
-  } }
+  "correos": {
+    "jaimito@correo,cl": "jaimito-k3f9"
+  },
+  "usuarios": {
+    "jaimito-k3f9": {
+      "nombre": "Jaimito",
+      "correo": "jaimito@correo.cl",
+      "contrasena": "<cifrada>",
+      "tarjetas": {
+        "banco-santander-a1b2": {
+          "banco": "Banco Santander",
+          "emisor": "santander",
+          "color": "#DC2626",
+          "cupo": 600000,
+          "diaVencimiento": 15,
+          "pagadoHasta": "2026-10",
+          "compartidaCon": { "camila-p4q8": "Camila" },
+          "compras": {
+            "bicicleta-oxford-x9w2": {
+              "descripcion": "Bicicleta Oxford",
+              "monto": 359990,
+              "cuotas": 6,
+              "cuotaActual": 3,
+              "primerMes": "2026-07",
+              "registradaPor": "jaimito-k3f9"
+            }
+          },
+          "suscripciones": {
+            "netflix-7c3d": {
+              "nombre": "Netflix",
+              "plan": "Estándar",
+              "monto": 10990,
+              "desde": "2026-05",
+              "pagadoHasta": "2026-10",
+              "registradaPor": "jaimito-k3f9"
+            }
+          }
+        }
+      },
+      "tarjetasDeOtros": {
+        "visa-camila-m2n6": "camila-p4q8"
+      }
+    }
+  }
 }
 ```
 
-Una tarjeta compartida, sus compras y sus suscripciones viven siempre en la rama de su dueño, aunque las registre otra persona (`autorUid` dice quién). El dueño anota a los demás en `miembros`, y cada uno guarda una referencia en `compartidasConmigo`. Así hay una sola copia de los datos y todos ven lo mismo.
+- **`correos`** sirve solo para ingresar: dice a qué usuario pertenece cada correo. Firebase no acepta puntos en las claves, por eso el correo va con `,` en vez de `.`.
+- **`contrasena`** nunca es la contraseña real: es un hash (scrypt con sal) que no se puede revertir.
+- **`pagadoHasta`** es el último mes pagado; **`primerMes`** y **`desde`**, el primer mes que se cobra una compra o una suscripción. Una tarjeta Visa o MasterCard usa su alias como título (`banco`); en los demás bancos, `alias` aparece solo si es distinto del nombre del banco.
+- **Tarjetas compartidas:** una tarjeta se guarda una sola vez, en el usuario dueño, con sus compras y suscripciones adentro aunque las registre otra persona (`registradaPor` dice quién). En `compartidaCon` están las personas que la ven, y cada una anota en `tarjetasDeOtros` de quién es. Así todos leen y escriben la misma copia.
 
 Solo se guarda lo que escribe el usuario. Todo lo demás (monto del mes, cupo disponible, vencimientos, proyecciones) se calcula en cada consulta, así nunca queda desactualizado.
 
@@ -172,6 +209,7 @@ backend/                     API Node.js + Express
     limites.ts               límites de cuotas, montos y textos
     servicio.ts              acciones y reglas de negocio (cupo, corte, pago del mes)
     db.ts                    Firebase Realtime Database (o el archivo local)
+    almacen.ts               cómo se guardan los datos en Firebase y su traducción a la lógica
     modelos.ts               tipos de lo que se guarda y lo que se entrega
     logica/                  cálculos puros: cuotas, fechas, estado, proyecciones
 ```
