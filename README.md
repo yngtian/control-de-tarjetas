@@ -165,7 +165,29 @@ railway up --service control-de-tarjetas
 
 Si cambias `.railway/railway.ts`, revisa y aplica con `railway config plan` y `railway config apply`. En Windows el paquete `railway` no encuentra la CLI por el acceso directo de npm: llama al ejecutable directo (`railway.exe` dentro de `%APPDATA%\npm\node_modules\@railway\cli\bin`).
 
-**En el celular:** la app web publicada se abre desde el navegador del teléfono (se puede "Agregar a pantalla de inicio"). Para que Expo Go use el backend publicado en vez del computador, define `EXPO_PUBLIC_API_URL=https://control-de-tarjetas-production.up.railway.app` en `frontend/.env`.
+**En el celular (gratis, también iPhone):** la app web es instalable. En Safari, *Compartir → Agregar a inicio* (en Chrome de Android, *⋮ → Instalar app*) deja el ícono en la pantalla de inicio y la abre a pantalla completa, sin la barra del navegador. Lo hacen `frontend/public/manifest.json`, los íconos de `frontend/public/` y las etiquetas de `frontend/public/index.html` (la plantilla que Expo usa para la web). La sesión de la app instalada es aparte de la de Safari: se ingresa una vez. Para que Expo Go use el backend publicado en vez del computador, define `EXPO_PUBLIC_API_URL=https://control-de-tarjetas-production.up.railway.app` en `frontend/.env`.
+
+## App instalable en el celular (Expo EAS)
+
+La app nativa se construye en la nube de Expo (proyecto `@tianxan/control-de-tarjetas`) y habla con el backend de Railway: la dirección va en `frontend/eas.json` (`EXPO_PUBLIC_API_URL`), así que no necesita el computador encendido. El identificador es `com.tianxan.controldetarjetas` en Android y en iOS.
+
+**Android (APK que se instala directo):** desde `frontend/`
+
+```bash
+eas build -p android --profile preview
+```
+
+Al terminar, Expo entrega un enlace (y un QR) para descargar el `.apk` en el teléfono. Android pide permitir "instalar apps de origen desconocido" la primera vez. Para una versión nueva, se vuelve a construir e instalar encima (los datos están en Firebase, no se pierden). La llave con que se firma la guarda Expo.
+
+**iPhone:** Apple no deja instalar apps fuera de la App Store sin una cuenta **Apple Developer** (US$99 al año). Con ella:
+
+```bash
+eas build -p ios --profile production --auto-submit
+```
+
+construye la app y la sube a **TestFlight**, desde donde se instala en el iPhone con la app TestFlight. EAS pide entrar con la cuenta de Apple la primera vez.
+
+Los íconos (`assets/images/`) repiten el logo de la pantalla de ingreso: cuadrado `#0F172A` con la tarjeta verde `#10B981`.
 
 ## API
 

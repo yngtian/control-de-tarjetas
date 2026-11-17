@@ -1,0 +1,45 @@
+<!doctype html>
+<!-- Plantilla de la app web: Expo la usa al armar la web y le agrega los scripts y estilos -->
+<html lang="%LANG_ISO_CODE%">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>%WEB_TITLE%</title>
+
+    <!-- App instalable: al "Agregar a inicio" se abre a pantalla completa, sin la barra del navegador -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <!-- iPhone: ícono, nombre bajo el ícono y barra de estado clara como el fondo de la app -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Tarjetas" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- Estilos base que recomienda react-native-web: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
+    <style id="expo-reset">
+      /* la página ocupa todo el alto, con el gris claro de la app de fondo */
+      html,
+      body {
+        height: 100%;
+        background-color: #f8fafc;
+      }
+      /* sin scroll en el body: cada pantalla usa su propio ScrollView */
+      body {
+        overflow: hidden;
+      }
+      /* la app ocupa todo el alto */
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+    </style>
+  </head>
+
+  <body>
+    <noscript>Activa JavaScript para usar Control de Tarjetas.</noscript>
+    <!-- aquí se dibuja la app -->
+    <div id="root"></div>
+  </body>
+</html>

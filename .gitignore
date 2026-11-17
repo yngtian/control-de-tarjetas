@@ -3,6 +3,10 @@
 # dependencias de la raíz (solo el paquete railway para .railway/railway.ts)
 /node_modules/
 
+# entregables pesados (video e informe): se guardan fuera de git y no viajan a Expo ni a Railway
+*.mp4
+*.docx
+
 # sistema operativo
 .DS_Store
 Thumbs.db
