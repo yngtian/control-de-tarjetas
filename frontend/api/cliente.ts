@@ -5,6 +5,7 @@
    - EXPO_PUBLIC_API_URL si está definida (ver frontend/.env.example).
    - Si no, el mismo computador que sirve la app (Metro) en el puerto 3000.
      Así funciona tanto en el navegador como en Expo Go en un celular de la misma red.
+   - La app web publicada (Railway) la entrega el mismo backend: usa la dirección de la página.
 
    Sesión: con una sesión iniciada, cada llamada lleva el encabezado
    "Authorization: Bearer <token>". Si el backend responde que la sesión no
@@ -13,11 +14,15 @@
 
 // trae los datos de configuración de la app de Expo
 import Constants from 'expo-constants';
+// trae la herramienta que dice si la app corre en el navegador o en el celular
+import { Platform } from 'react-native';
 // trae la forma de los datos que viajan al servidor y vuelven
 import type { CambiosTarjeta, CambiosTransaccion, Estado, NuevaSuscripcion, NuevaTarjeta, Proyeccion, RespuestaSesion, Resultado, Usuario } from './tipos';
 
 // calcula la dirección del servidor si no se configuró una
 function urlPorDefecto(): string {
+  // La app web ya armada (no la de desarrollo) la sirve el mismo backend, en la misma dirección
+  if (Platform.OS === 'web' && !__DEV__) return window.location.origin;
   // hostUri es "192.168.1.5:8081" cuando la app viene del servidor de desarrollo
   const host = Constants.expoConfig?.hostUri?.split(':')[0] ?? 'localhost';
   // arma la dirección usando el puerto 3000

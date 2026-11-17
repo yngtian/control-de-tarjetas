@@ -1,0 +1,8 @@
+{
+  "name": "control-de-tarjetas",
+  "private": true,
+  "description": "Solo para la configuración de Railway (.railway/railway.ts). La app está en frontend/ y la API en backend/.",
+  "devDependencies": {
+    "railway": "^3.17.0"
+  }
+}

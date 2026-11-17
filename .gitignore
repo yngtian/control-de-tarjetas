@@ -1,5 +1,8 @@
 # Lo de cada carpeta (dependencias, .env, credenciales de Firebase) está en backend/.gitignore y frontend/.gitignore
 
+# dependencias de la raíz (solo el paquete railway para .railway/railway.ts)
+/node_modules/
+
 # sistema operativo
 .DS_Store
 Thumbs.db

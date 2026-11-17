@@ -32,14 +32,20 @@ export interface BaseDeDatos {
 }
 
 /** Firebase Realtime Database usando el SDK de administración (cuenta de servicio). */
-async function crearFirebase(databaseURL: string, rutaCredenciales: string): Promise<BaseDeDatos> {
+async function crearFirebase(databaseURL: string, credencialesOArchivo: string): Promise<BaseDeDatos> {
   // Se importa solo si se usa Firebase, así el modo local arranca más rápido
   const { cert, initializeApp } = await import('firebase-admin/app');
   // trae la función que abre la base de datos de Firebase
   const { getDatabase } = await import('firebase-admin/database');
 
-  // lee el archivo con la clave de acceso a Firebase
-  const credenciales = JSON.parse(readFileSync(rutaCredenciales, 'utf8'));
+  // En Railway no hay archivo: la variable trae el JSON mismo. En el computador trae la ruta al archivo
+  const texto = credencialesOArchivo.trim().startsWith('{')
+    // si empieza con "{", la variable ya es el JSON con la clave
+    ? credencialesOArchivo
+    // si no, lee el archivo con la clave de acceso a Firebase
+    : readFileSync(path.resolve(credencialesOArchivo), 'utf8');
+  // convierte el texto de la clave en datos
+  const credenciales = JSON.parse(texto);
   // se conecta a Firebase con esa clave
   const app = initializeApp({ credential: cert(credenciales), databaseURL });
   // abre la base de datos
@@ -134,6 +140,7 @@ function crearArchivoLocal(archivo: string): BaseDeDatos {
 /**
  * Elige la base de datos según las variables de entorno (ver .env.example):
  * con FIREBASE_DATABASE_URL y FIREBASE_CREDENCIALES usa Firebase; si falta alguna, el archivo local.
+ * FIREBASE_CREDENCIALES puede ser la ruta al JSON de la cuenta de servicio o el JSON mismo (en Railway).
  */
 export async function crearBaseDeDatos(): Promise<BaseDeDatos> {
   // lee la dirección y la clave de Firebase de la configuración
@@ -141,7 +148,12 @@ export async function crearBaseDeDatos(): Promise<BaseDeDatos> {
   // si están las dos, usa Firebase
   if (FIREBASE_DATABASE_URL && FIREBASE_CREDENCIALES) {
     // se conecta a Firebase
-    return crearFirebase(FIREBASE_DATABASE_URL, path.resolve(FIREBASE_CREDENCIALES));
+    return crearFirebase(FIREBASE_DATABASE_URL, FIREBASE_CREDENCIALES);
+  }
+  // Publicado (Railway) el archivo local se borraría en cada despliegue: sin Firebase no arranca
+  if (process.env.NODE_ENV === 'production') {
+    // detiene el servidor explicando qué falta
+    throw new Error('Falta configurar Firebase: define FIREBASE_DATABASE_URL y FIREBASE_CREDENCIALES.');
   }
   // si no, usa el archivo local
   return crearArchivoLocal(path.resolve(process.env.ARCHIVO_LOCAL ?? 'datos-local.json'));

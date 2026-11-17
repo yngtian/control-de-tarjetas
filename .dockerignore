@@ -1,0 +1,24 @@
+# Lo que no entra a la imagen de Railway
+
+# dependencias: se instalan de nuevo dentro de la imagen
+**/node_modules
+
+# secretos y datos locales: en Railway van como variables (ver README)
+**/.env
+**/.env*.local
+backend/firebase-credenciales.json
+backend/*-firebase-adminsdk-*.json
+backend/datos-local.json
+backend/.secreto-sesion
+
+# archivos generados por Expo
+frontend/.expo
+frontend/dist
+frontend/expo-env.d.ts
+
+# entregables y configuración del editor
+*.mp4
+*.docx
+.git
+.vscode
+.claude

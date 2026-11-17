@@ -1,0 +1,12 @@
+# Lo que `railway up` no sube (además de lo que ya ignora .gitignore)
+
+# secretos: en Railway van como variables del servicio (ver README)
+.env
+firebase-credenciales.json
+*-firebase-adminsdk-*.json
+.secreto-sesion
+datos-local.json
+
+# entregables pesados que no son parte de la app
+*.mp4
+*.docx

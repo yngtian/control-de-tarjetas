@@ -137,6 +137,36 @@ Así queda el árbol en Firebase. Está pensado para leerse a simple vista en la
 
 Solo se guarda lo que escribe el usuario. Todo lo demás (monto del mes, cupo disponible, vencimientos, proyecciones) se calcula en cada consulta, así nunca queda desactualizado.
 
+## Publicar en Railway (24/7)
+
+**Publicada en https://control-de-tarjetas-production.up.railway.app** (proyecto y servicio `control-de-tarjetas` en Railway, entorno `production`).
+
+En Railway corre **un solo servicio**: el backend, que además entrega la app web ya armada. Así la app y la API quedan en la misma dirección y no hay que configurar la URL del backend. Los datos siguen en Firebase.
+
+- **`Dockerfile`** arma la app web (`npx expo export --platform web`) y deja el backend sirviéndola. Fija `NODE_ENV=production` y `TZ=America/Santiago`: los meses, días de corte y vencimientos se calculan con la hora de Chile, no con la del servidor (que está en UTC).
+- **`.railway/railway.ts`** es la configuración del servicio en Railway: usar ese Dockerfile y revisar `/health` antes de dar por bueno un despliegue (si falla, sigue la versión anterior). Las variables no están ahí: se manejan en Railway. El `package.json` de la raíz solo instala el paquete `railway` que ese archivo necesita.
+- **`.dockerignore`** y **`.railwayignore`** dejan fuera los secretos (`.env`, `firebase-credenciales.json`), los datos locales y el video/informe.
+
+Variables del servicio en Railway (pestaña *Variables*):
+
+| Variable | Valor |
+| --- | --- |
+| `FIREBASE_DATABASE_URL` | La misma de `backend/.env` |
+| `FIREBASE_CREDENCIALES` | El **contenido** completo de `firebase-credenciales.json` (en Railway no hay archivo; el backend acepta la ruta o el JSON mismo) |
+| `SESSION_SECRET` | Una cadena larga al azar. Si cambia, todos deben volver a ingresar |
+
+Railway define `PORT` solo. En producción, si falta Firebase o `SESSION_SECRET` el servidor no arranca (a propósito: sin Firebase guardaría los datos en un archivo que se borra en cada despliegue) y Railway mantiene la versión anterior.
+
+Para subir una versión nueva, desde la carpeta del proyecto (ya enlazada con Railway; en otro computador, `railway link`):
+
+```bash
+railway up --service control-de-tarjetas
+```
+
+Si cambias `.railway/railway.ts`, revisa y aplica con `railway config plan` y `railway config apply`. En Windows el paquete `railway` no encuentra la CLI por el acceso directo de npm: llama al ejecutable directo (`railway.exe` dentro de `%APPDATA%\npm\node_modules\@railway\cli\bin`).
+
+**En el celular:** la app web publicada se abre desde el navegador del teléfono (se puede "Agregar a pantalla de inicio"). Para que Expo Go use el backend publicado en vez del computador, define `EXPO_PUBLIC_API_URL=https://control-de-tarjetas-production.up.railway.app` en `frontend/.env`.
+
 ## API
 
 | Método | Ruta | Qué hace |
@@ -227,5 +257,5 @@ backend/                     API Node.js + Express
 - **Compartir es inmediato:** al escribir el correo, la otra persona ya ve la tarjeta; no hay invitación que aceptar ni aviso. Los cambios del otro llegan en hasta 10 segundos (la app consulta al servidor; no hay notificaciones en tiempo real).
 - **El pago es siempre del total acumulado:** no hay pagos parciales ni registro del monto pagado.
 - **Cuentas sin recuperación de contraseña ni límite de intentos.** No hay "olvidé mi contraseña" ni bloqueo tras varios intentos fallidos. Antes de publicar la API conviene agregar ambos y servirla con HTTPS.
-- **Secreto de sesión:** en producción hay que definir `SESSION_SECRET` en `backend/.env`. Sin ella, en desarrollo se genera uno en `backend/.secreto-sesion`.
+- **Secreto de sesión:** en producción hay que definir `SESSION_SECRET` (en Railway, como variable del servicio). Sin ella, en desarrollo se genera uno en `backend/.secreto-sesion`.
 - Los límites (`limites.ts`) y los tipos de la API están copiados en el backend y en la app. Los tipos están en `backend/src/modelos.ts` y `frontend/api/tipos.ts`. Si cambia uno, hay que actualizar el otro.

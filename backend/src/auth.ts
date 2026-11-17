@@ -93,6 +93,8 @@ export function leerToken(token: string, secreto: string): string | null {
 export function obtenerSecreto(): string {
   // si la clave viene en la configuración, usa esa
   if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
+  // Publicado (Railway) el archivo se borraría en cada despliegue y todos tendrían que volver a ingresar
+  if (process.env.NODE_ENV === 'production') throw new Error('Falta definir SESSION_SECRET.');
   // ubica el archivo donde se guarda la clave
   const archivo = path.resolve('.secreto-sesion');
   // si el archivo ya existe, lee la clave de ahí
